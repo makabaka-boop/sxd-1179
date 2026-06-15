@@ -73,6 +73,9 @@ export const RecordList = () => {
                 过敏提示
               </th>
               <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                复核备注
+              </th>
+              <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
                 状态
               </th>
               <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
@@ -135,6 +138,13 @@ export const RecordList = () => {
                       : 'text-gray-600'
                   }`}>
                     {record.allergyWarning || (
+                      <span className="text-gray-400">无</span>
+                    )}
+                  </span>
+                </td>
+                <td className="px-4 py-3 max-w-[200px]">
+                  <span className="text-sm text-gray-600 truncate block" title={record.reviewNotes}>
+                    {record.reviewNotes || (
                       <span className="text-gray-400">无</span>
                     )}
                   </span>

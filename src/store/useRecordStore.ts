@@ -21,7 +21,7 @@ interface RecordActions {
   addRecord: (record: Omit<SnackPackRecord, 'id' | 'createdAt' | 'updatedAt'>) => void;
   updateRecord: (id: string, updates: Partial<SnackPackRecord>) => void;
   deleteRecord: (id: string) => void;
-  batchUpdateStatus: (ids: string[], status: Status) => void;
+  batchUpdateStatus: (ids: string[], status: Status) => { success: boolean; message?: string };
   batchUpdateResponsiblePerson: (ids: string[], person: string) => void;
   setFilters: (filters: Partial<Filters>) => void;
   resetFilters: () => void;
@@ -150,13 +150,27 @@ export const useRecordStore = create<RecordState & RecordActions>((set, get) => 
   },
 
   batchUpdateStatus: (ids, status) => {
+    if (status === 'ready') {
+      const selectedRecords = get().records.filter((r) => ids.includes(r.id));
+      const missingAllergy = selectedRecords.filter(
+        (r) => !r.allergyWarning || r.allergyWarning.trim() === ''
+      );
+      if (missingAllergy.length > 0) {
+        return {
+          success: false,
+          message: `有 ${missingAllergy.length} 条记录缺少过敏提示，无法标记为「可发放」。请先补充过敏提示后再操作。`,
+        };
+      }
+    }
     const records = get().records.map((r) =>
       ids.includes(r.id) ? { ...r, status, updatedAt: new Date().toISOString() } : r
     );
     saveRecords(records);
     const alerts = validateRecords(records);
     const filtered = applyFilters(records, get().filters);
-    set({ records, filteredRecords: filtered, alerts, selectedIds: new Set() });
+    const currentSelected = new Set(get().selectedIds);
+    set({ records, filteredRecords: filtered, alerts, selectedIds: currentSelected });
+    return { success: true };
   },
 
   batchUpdateResponsiblePerson: (ids, person) => {
@@ -166,7 +180,8 @@ export const useRecordStore = create<RecordState & RecordActions>((set, get) => 
     saveRecords(records);
     const alerts = validateRecords(records);
     const filtered = applyFilters(records, get().filters);
-    set({ records, filteredRecords: filtered, alerts, selectedIds: new Set() });
+    const currentSelected = new Set(get().selectedIds);
+    set({ records, filteredRecords: filtered, alerts, selectedIds: currentSelected });
   },
 
   setFilters: (newFilters) => {

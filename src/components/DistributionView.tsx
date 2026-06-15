@@ -134,6 +134,9 @@ export const DistributionView = () => {
                             <span className="text-xs font-medium text-gray-500">过敏提示</span>
                           </th>
                           <th className="px-4 py-2 text-left">
+                            <span className="text-xs font-medium text-gray-500">复核备注</span>
+                          </th>
+                          <th className="px-4 py-2 text-left">
                             <span className="text-xs font-medium text-gray-500">状态</span>
                           </th>
                           <th className="px-4 py-2 text-left">
@@ -181,6 +184,13 @@ export const DistributionView = () => {
                                   : 'text-gray-600'
                               }`}>
                                 {record.allergyWarning || (
+                                  <span className="text-gray-400">无</span>
+                                )}
+                              </span>
+                            </td>
+                            <td className="px-4 py-2.5 max-w-[180px]">
+                              <span className="text-sm text-gray-600 truncate block" title={record.reviewNotes}>
+                                {record.reviewNotes || (
                                   <span className="text-gray-400">无</span>
                                 )}
                               </span>

@@ -66,22 +66,43 @@ const checkMissingBatch = (records: SnackPackRecord[]): Alert | null => {
 
 const checkPersonBacklog = (records: SnackPackRecord[]): Alert[] => {
   const alerts: Alert[] = [];
-  const personPending = new Map<string, string[]>();
+  const personRecords = new Map<string, SnackPackRecord[]>();
 
-  records
-    .filter((r) => r.status === 'pending_review')
-    .forEach((record) => {
-      const person = record.responsiblePerson || '未分配';
-      const existing = personPending.get(person) || [];
-      personPending.set(person, [...existing, record.id]);
+  records.forEach((record) => {
+    const person = record.responsiblePerson || '未分配';
+    const existing = personRecords.get(person) || [];
+    personRecords.set(person, [...existing, record]);
+  });
+
+  personRecords.forEach((personRecs, person) => {
+    const sorted = [...personRecs].sort((a, b) =>
+      new Date(a.createdAt).getTime() - new Date(b.createdAt).getTime()
+    );
+
+    let maxConsecutive = 0;
+    let currentConsecutive = 0;
+    let consecutiveIds: string[] = [];
+    let maxConsecutiveIds: string[] = [];
+
+    sorted.forEach((record) => {
+      if (record.status === 'pending_review') {
+        currentConsecutive++;
+        consecutiveIds.push(record.id);
+        if (currentConsecutive > maxConsecutive) {
+          maxConsecutive = currentConsecutive;
+          maxConsecutiveIds = [...consecutiveIds];
+        }
+      } else {
+        currentConsecutive = 0;
+        consecutiveIds = [];
+      }
     });
 
-  personPending.forEach((ids, person) => {
-    if (ids.length >= BACKLOG_THRESHOLD) {
+    if (maxConsecutive >= BACKLOG_THRESHOLD) {
       alerts.push({
         type: 'backlog_person' as AlertType,
-        message: `责任人「${person}」名下有 ${ids.length} 条待复核记录堆积`,
-        recordIds: ids,
+        message: `责任人「${person}」名下有连续 ${maxConsecutive} 条待复核记录堆积`,
+        recordIds: maxConsecutiveIds,
         severity: 'warning',
       });
     }

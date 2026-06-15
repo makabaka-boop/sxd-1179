@@ -31,7 +31,10 @@ export const BatchActionBar = () => {
 
   const handleStatusChange = (status: Status) => {
     if (confirm(`确定要将选中的 ${selectedIds.size} 条记录状态更新为「${STATUS_LABELS[status]}」吗？`)) {
-      batchUpdateStatus(Array.from(selectedIds), status);
+      const result = batchUpdateStatus(Array.from(selectedIds), status);
+      if (!result.success && result.message) {
+        alert(result.message);
+      }
     }
     setShowStatusDropdown(false);
   };

@@ -57,3 +57,28 @@ export interface DistributionGroup {
   records: SnackPackRecord[];
   totalQuantity: number;
 }
+
+export interface OverviewMetrics {
+  totalPackages: number;
+  totalQuantity: number;
+  readyQuantity: number;
+  pendingReviewQuantity: number;
+  suspendedQuantity: number;
+}
+
+export interface BatchProgress {
+  batch: string;
+  totalPackages: number;
+  totalQuantity: number;
+  readyQuantity: number;
+  pendingReviewQuantity: number;
+  suspendedQuantity: number;
+  pendingPackQuantity: number;
+  completionRate: number;
+  alertCount: number;
+  missingAllergyCount: number;
+  missingBatchCount: number;
+  primaryResponsiblePerson: string;
+  responsiblePersons: string[];
+  records: SnackPackRecord[];
+}

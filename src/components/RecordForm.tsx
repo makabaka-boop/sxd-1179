@@ -91,7 +91,8 @@ export const RecordForm = () => {
     }));
     if (errors[name]) {
       setErrors((prev) => {
-        const { [name]: _, ...rest } = prev;
+        const { [name]: removed, ...rest } = prev;
+        void removed;
         return rest;
       });
     }

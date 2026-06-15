@@ -1,4 +1,4 @@
-import { X, Filter, RefreshCw } from 'lucide-react';
+import { Filter, RefreshCw } from 'lucide-react';
 import { useRecordStore } from '../store/useRecordStore';
 import { STATUS_LABELS } from '../types';
 import type { Status } from '../types';

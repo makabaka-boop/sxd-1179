@@ -1,13 +1,24 @@
 import { useState } from 'react';
-import { ChevronDown, ChevronRight, Edit2, Trash2, Package } from 'lucide-react';
+import { ChevronDown, ChevronRight, Edit2, Trash2, Package, AlertTriangle, User, CheckCircle, Clock, Pause, Package2 } from 'lucide-react';
 import { useRecordStore } from '../store/useRecordStore';
 import { StatusBadge } from './StatusBadge';
-import type { DistributionGroup, SnackPackRecord } from '../types';
+import { STATUS_COLORS } from '../types';
+import type { SnackPackRecord, BatchProgress } from '../types';
 
 export const DistributionView = () => {
-  const { getDistributionGroups, selectedIds, highlightedRecordIds, toggleSelect, openForm, deleteRecord } = useRecordStore();
+  const { getDistributionGroups, getBatchProgressList, selectedIds, highlightedRecordIds, toggleSelect, openForm, deleteRecord } = useRecordStore();
   const [expandedGroups, setExpandedGroups] = useState<Set<string>>(new Set());
   const groups = getDistributionGroups();
+  const batchProgressList = getBatchProgressList();
+
+  const batchProgressMap = new Map<string, BatchProgress>();
+  batchProgressList.forEach((bp) => batchProgressMap.set(bp.batch, bp));
+
+  const getProgressColor = (rate: number) => {
+    if (rate >= 80) return STATUS_COLORS.ready;
+    if (rate >= 50) return STATUS_COLORS.pending_review;
+    return STATUS_COLORS.pending_pack;
+  };
 
   const toggleGroup = (key: string) => {
     const newExpanded = new Set(expandedGroups);
@@ -68,14 +79,69 @@ export const DistributionView = () => {
           <div key={groupKey} style={{ animation: `fadeInUp 0.3s ease-out ${groupIndex * 0.05}s both` }}>
             {showBatchHeader && (
               <div className="mt-6 mb-3">
-                <div className="flex items-center gap-2">
-                  <div className="w-1 h-6 bg-gradient-to-b from-orange-400 to-orange-600 rounded-full" />
-                  <h3 className="text-lg font-semibold text-gray-800">
-                    {group.batch}
-                  </h3>
-                  <span className="px-2 py-0.5 bg-gray-100 text-gray-600 text-xs rounded-full">
-                    批次
-                  </span>
+                <div className="bg-gradient-to-r from-orange-50/80 to-white rounded-lg p-3 border border-orange-100">
+                  <div className="flex items-center justify-between flex-wrap gap-3">
+                    <div className="flex items-center gap-2">
+                      <div className="w-1 h-6 bg-gradient-to-b from-orange-400 to-orange-600 rounded-full" />
+                      <h3 className="text-lg font-semibold text-gray-800">
+                        {group.batch}
+                      </h3>
+                      <span className="px-2 py-0.5 bg-gray-100 text-gray-600 text-xs rounded-full">
+                        批次
+                      </span>
+                      {batchProgressMap.get(group.batch)?.alertCount && batchProgressMap.get(group.batch)!.alertCount > 0 && (
+                        <span className="flex items-center gap-0.5 px-1.5 py-0.5 bg-red-50 text-red-600 text-xs font-medium rounded-full">
+                          <AlertTriangle className="w-3 h-3" />
+                          {batchProgressMap.get(group.batch)!.alertCount} 个异常
+                        </span>
+                      )}
+                    </div>
+                    <div className="flex items-center gap-4 flex-wrap text-sm">
+                      {batchProgressMap.get(group.batch) && (
+                        <>
+                          <div className="flex items-center gap-1.5">
+                            <div className="w-24 h-2 bg-gray-200 rounded-full overflow-hidden">
+                              <div
+                                className="h-full rounded-full transition-all duration-500"
+                                style={{
+                                  width: `${batchProgressMap.get(group.batch)!.completionRate}%`,
+                                  backgroundColor: getProgressColor(batchProgressMap.get(group.batch)!.completionRate),
+                                }}
+                              />
+                            </div>
+                            <span className="font-semibold" style={{ color: getProgressColor(batchProgressMap.get(group.batch)!.completionRate) }}>
+                              {batchProgressMap.get(group.batch)!.completionRate}%
+                            </span>
+                          </div>
+                          <div className="flex items-center gap-1 text-gray-600">
+                            <CheckCircle className="w-3.5 h-3.5" style={{ color: STATUS_COLORS.ready }} />
+                            <span>可发放 <b style={{ color: STATUS_COLORS.ready }}>{batchProgressMap.get(group.batch)!.readyQuantity}</b></span>
+                          </div>
+                          <div className="flex items-center gap-1 text-gray-600">
+                            <Clock className="w-3.5 h-3.5" style={{ color: STATUS_COLORS.pending_review }} />
+                            <span>待复核 <b style={{ color: STATUS_COLORS.pending_review }}>{batchProgressMap.get(group.batch)!.pendingReviewQuantity}</b></span>
+                          </div>
+                          <div className="flex items-center gap-1 text-gray-600">
+                            <Package2 className="w-3.5 h-3.5" style={{ color: STATUS_COLORS.pending_pack }} />
+                            <span>待分装 <b style={{ color: STATUS_COLORS.pending_pack }}>{batchProgressMap.get(group.batch)!.pendingPackQuantity}</b></span>
+                          </div>
+                          <div className="flex items-center gap-1 text-gray-600">
+                            <Pause className="w-3.5 h-3.5" style={{ color: STATUS_COLORS.suspended }} />
+                            <span>暂缓 <b style={{ color: STATUS_COLORS.suspended }}>{batchProgressMap.get(group.batch)!.suspendedQuantity}</b></span>
+                          </div>
+                          <div className="flex items-center gap-1 text-gray-600">
+                            <User className="w-3.5 h-3.5 text-gray-400" />
+                            <span>责任人 <b>{batchProgressMap.get(group.batch)!.primaryResponsiblePerson}</b></span>
+                            {batchProgressMap.get(group.batch)!.responsiblePersons.length > 1 && (
+                              <span className="text-xs text-gray-400">
+                                +{batchProgressMap.get(group.batch)!.responsiblePersons.length - 1}
+                              </span>
+                            )}
+                          </div>
+                        </>
+                      )}
+                    </div>
+                  </div>
                 </div>
               </div>
             )}

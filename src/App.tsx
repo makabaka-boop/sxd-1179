@@ -2,6 +2,7 @@ import { useEffect } from 'react';
 import { Header } from './components/Header';
 import { FilterBar } from './components/FilterBar';
 import { AlertPanel } from './components/AlertPanel';
+import { ProgressOverview } from './components/ProgressOverview';
 import { RecordList } from './components/RecordList';
 import { DistributionView } from './components/DistributionView';
 import { RecordForm } from './components/RecordForm';
@@ -20,6 +21,7 @@ function App() {
       <Header />
 
       <main className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6">
+        <ProgressOverview />
         <FilterBar />
         <AlertPanel />
 

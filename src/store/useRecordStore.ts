@@ -1,5 +1,5 @@
 import { create } from 'zustand';
-import type { SnackPackRecord, Filters, Alert, Status, ViewMode, DistributionGroup } from '../types';
+import type { SnackPackRecord, Filters, Alert, Status, ViewMode, DistributionGroup, OverviewMetrics, BatchProgress } from '../types';
 import { loadRecords, saveRecords, generateId } from '../utils/storage';
 import { validateRecords, getUniqueValues } from '../utils/validator';
 import { mockRecords } from '../data/mockData';
@@ -37,6 +37,8 @@ interface RecordActions {
   getPersonOptions: () => string[];
   getBatchOptions: () => string[];
   getDistributionGroups: () => DistributionGroup[];
+  getOverviewMetrics: () => OverviewMetrics;
+  getBatchProgressList: () => BatchProgress[];
 }
 
 const initialFilters: Filters = {
@@ -90,6 +92,116 @@ const groupByDistribution = (records: SnackPackRecord[]): DistributionGroup[] =>
     if (a.batch !== b.batch) return a.batch.localeCompare(b.batch);
     return a.flavor.localeCompare(b.flavor);
   });
+};
+
+const calculateOverviewMetrics = (records: SnackPackRecord[]): OverviewMetrics => {
+  const totalPackages = records.length;
+  let totalQuantity = 0;
+  let readyQuantity = 0;
+  let pendingReviewQuantity = 0;
+  let suspendedQuantity = 0;
+
+  records.forEach((record) => {
+    totalQuantity += record.quantity;
+    switch (record.status) {
+      case 'ready':
+        readyQuantity += record.quantity;
+        break;
+      case 'pending_review':
+        pendingReviewQuantity += record.quantity;
+        break;
+      case 'suspended':
+        suspendedQuantity += record.quantity;
+        break;
+    }
+  });
+
+  return {
+    totalPackages,
+    totalQuantity,
+    readyQuantity,
+    pendingReviewQuantity,
+    suspendedQuantity,
+  };
+};
+
+const calculateBatchProgress = (records: SnackPackRecord[]): BatchProgress[] => {
+  const batchMap = new Map<string, SnackPackRecord[]>();
+
+  records.forEach((record) => {
+    const batch = record.targetBatch || '未分配批次';
+    const existing = batchMap.get(batch) || [];
+    batchMap.set(batch, [...existing, record]);
+  });
+
+  const progressList: BatchProgress[] = [];
+
+  batchMap.forEach((batchRecords, batch) => {
+    const totalPackages = batchRecords.length;
+    let totalQuantity = 0;
+    let readyQuantity = 0;
+    let pendingReviewQuantity = 0;
+    let suspendedQuantity = 0;
+    let pendingPackQuantity = 0;
+    let missingAllergyCount = 0;
+    let missingBatchCount = 0;
+
+    const personCount = new Map<string, number>();
+
+    batchRecords.forEach((record) => {
+      totalQuantity += record.quantity;
+      switch (record.status) {
+        case 'ready':
+          readyQuantity += record.quantity;
+          break;
+        case 'pending_review':
+          pendingReviewQuantity += record.quantity;
+          break;
+        case 'suspended':
+          suspendedQuantity += record.quantity;
+          break;
+        case 'pending_pack':
+          pendingPackQuantity += record.quantity;
+          break;
+      }
+
+      if (record.status === 'ready' && (!record.allergyWarning || record.allergyWarning.trim() === '')) {
+        missingAllergyCount++;
+      }
+      if (!record.targetBatch || record.targetBatch.trim() === '') {
+        missingBatchCount++;
+      }
+
+      const person = record.responsiblePerson || '未分配';
+      personCount.set(person, (personCount.get(person) || 0) + 1);
+    });
+
+    const completionRate = totalQuantity > 0 ? Math.round((readyQuantity / totalQuantity) * 100) : 0;
+    const alertCount = missingAllergyCount + missingBatchCount;
+
+    const sortedPersons = Array.from(personCount.entries()).sort((a, b) => b[1] - a[1]);
+    const primaryResponsiblePerson = sortedPersons.length > 0 ? sortedPersons[0][0] : '未分配';
+    const responsiblePersons = sortedPersons.map(([person]) => person);
+
+    progressList.push({
+      batch,
+      totalPackages,
+      totalQuantity,
+      readyQuantity,
+      pendingReviewQuantity,
+      suspendedQuantity,
+      pendingPackQuantity,
+      completionRate,
+      alertCount,
+      missingAllergyCount,
+      missingBatchCount,
+      primaryResponsiblePerson,
+      responsiblePersons,
+      records: batchRecords,
+    });
+  });
+
+  return progressList.sort((a, b) => a.batch.localeCompare(b.batch));
 };
 
 export const useRecordStore = create<RecordState & RecordActions>((set, get) => ({
@@ -250,4 +362,6 @@ export const useRecordStore = create<RecordState & RecordActions>((set, get) => 
   getBatchOptions: () => getUniqueValues(get().records, 'targetBatch'),
 
   getDistributionGroups: () => groupByDistribution(get().filteredRecords),
+  getOverviewMetrics: () => calculateOverviewMetrics(get().filteredRecords),
+  getBatchProgressList: () => calculateBatchProgress(get().filteredRecords),
 }));
